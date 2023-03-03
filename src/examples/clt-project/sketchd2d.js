@@ -149,7 +149,7 @@ function getXY(evt) {
 function draw() {
   // get canvas' 2d context
   let canvas = getCanvas();
-  let ctx = canvas.getContext('2d');
+  let ctx = canvas.getContext('webgl');
   let w2s = _model.viewport.getXform(rhino.CoordinateSystem.World, rhino.CoordinateSystem.Screen);
 
   // clear and draw a grid

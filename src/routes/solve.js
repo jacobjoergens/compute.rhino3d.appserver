@@ -124,6 +124,7 @@ function commonSolve (req, res, next){
     //console.log('solving')
     // set parameters
     let trees = []
+    console.log(res.locals.params.inputs);
     if(res.locals.params.inputs !== undefined) { //TODO: handle no inputs
       for (let [key, value] of Object.entries(res.locals.params.inputs)) {
         let param = new compute.Grasshopper.DataTree(key)
@@ -138,7 +139,7 @@ function commonSolve (req, res, next){
         trees.push(param)
       }
     }
-
+    console.log(trees);
     let fullUrl = req.protocol + '://' + req.get('host')
     let definitionPath = `${fullUrl}/definition/${definition.id}`
     const timePreComputeServerCall = performance.now()
