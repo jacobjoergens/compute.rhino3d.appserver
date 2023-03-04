@@ -16,7 +16,7 @@ let crvPoints
 rhino3dm().then(async m => {
     console.log('Loaded rhino3dm.')
     rhino = m // global
-    crvPoints = new rhino.Point3dList();
+    crvPoints = [];
     RhinoCompute.url = "http://localhost:8081/" // RhinoCompute server url. Use http://localhost:8081 if debugging locally.
     RhinoCompute.apiKey = getAuth('RHINO_COMPUTE_KEY')  // RhinoCompute server api key. Leave blank if debugging locally.
 
@@ -34,7 +34,7 @@ rhino3dm().then(async m => {
 
 let dottedGeometry, dottedLine
 let crossings = new THREE.Group()
-let previewGroup = null
+let previewGroup
 
 let solidGeometry, solidLine
 
@@ -43,7 +43,7 @@ let vertices = [];
 let curves =  new THREE.Group();
 
 //snapLine variables
-let h_snapLine = [];
+let h_snapLine =[];
 let v_snapLine = [];
 
 function stage() {
@@ -78,7 +78,7 @@ function stage() {
 }
 
 function onMouseDown(event){
-    let [x, y] = getXY(event);
+    let point = getXY(event);
     event.preventDefault();
     if (crossings.children.length > 0) {
         crossings.traverse((child) => {
@@ -98,18 +98,18 @@ function onMouseDown(event){
         
         if (vertices.length == 1) {
             vertices[0] = new THREE.Vector3().fromBufferAttribute(positionAttribute, 0);
-            crvPoints.add(...vertices[0].toArray())
+            crvPoints.push(new rhino.Point3dList());
+            crvPoints[crvPoints.length-1].add(...vertices[0].toArray());
         }
         const endpoint = new THREE.Vector3().fromBufferAttribute(positionAttribute, 1);
 
         // add solid line to scene
         vertices.push(endpoint);
-        crvPoints.add(...endpoint.toArray())
+        crvPoints[crvPoints.length-1].add(...endpoint.toArray())
         updateSolidLine();
     } else {
         // add first vertex
-        const first = new THREE.Vector3(x,y,0);
-        vertices.push(first);
+        vertices.push(point);
         updateSolidLine();
     }
 
@@ -131,11 +131,12 @@ function onMouseDown(event){
 
 function onMouseMove(event){
     event.preventDefault();
-    let [x, y] = getXY(event);
+    let point = getXY(event);
 
     if (vertices.length > 0) {
         if (previewGroup) {
-            previewGroup.visible = false;
+            previewGroup[0].visible = false;
+            previewGroup[1].visible = false;
             previewGroup = null;
         }
 
@@ -148,12 +149,11 @@ function onMouseMove(event){
         }
 
         const lastVertex = vertices[vertices.length - 1];
-        let nextVertex;
-        const dx = Math.abs(x - lastVertex.x);
-        const dy = Math.abs(y - lastVertex.y);
+        const dx = Math.abs(point.x - lastVertex.x);
+        const dy = Math.abs(point.y - lastVertex.y);
         let snap_intersects, orthogonal_vertex;
         let snapSet = [h_snapLine, v_snapLine];
-        const order = [lastVertex, new THREE.Vector3(x,y,0)];
+        const order = [lastVertex, point];
         let intersects;
 
         if (dx > dy) { // horizontal line
@@ -161,7 +161,7 @@ function onMouseMove(event){
             snapSet.reverse();
         } 
 
-        nextVertex = new THREE.Vector3(order[0].x, order[1].y, 0);
+        const nextVertex = new THREE.Vector3(order[0].x, order[1].y, 0);
         let direction = new THREE.Vector3().subVectors(nextVertex, lastVertex);
 
         if(vertices.length>1){
@@ -175,9 +175,11 @@ function onMouseMove(event){
         }
         const orthocaster = new THREE.Raycaster(nextVertex, direction.normalize());
         if (vertices.length > 2) {
-            snap_intersects = orthocaster.intersectObjects(snapSet[0]);
-            if (snap_intersects && snap_intersects[0] && snap_intersects[0].distance<0.5) {
-                orthogonal_vertex = drawPreview(snap_intersects[0].object.parent, lastVertex);
+            const snaplines = snapSet[0].map(el => el[0]);
+            snap_intersects = orthocaster.intersectObjects(snaplines);
+            if (snap_intersects && snap_intersects[0] && snap_intersects[0].distance<.5) {
+                console.log("snapped")
+                orthogonal_vertex = drawPreview(snap_intersects[0].object, lastVertex);
                 if (orthogonal_vertex) {
                     order[order.indexOf(point)] = orthogonal_vertex;
                     nextVertex.set(order[0].x, order[1].y, 0);
@@ -238,7 +240,7 @@ function getXY(evt) {
     // calculate intersection point with plane
     raycaster.setFromCamera(mouse, camera);
     raycaster.ray.intersectPlane(plane, point);
-    return [point.x, point.y]
+    return point
 }
 
 function updateSolidLine() {
@@ -272,6 +274,10 @@ function setSnapLines(vertex, lastVertex, secondLast){
     
     let a,b;
     // create viable, cardinal snapLines around new vertex
+    
+    const circle = drawCircle(lastVertex, 0xb8a5a3, false);
+    scene.add(circle);
+
     for(const el of cardinal){
         if(el.equals(last_direction)||(second_direction&&el.equals(second_direction))){
             continue;
@@ -285,25 +291,27 @@ function setSnapLines(vertex, lastVertex, secondLast){
     
         const snapGeometry = new THREE.BufferGeometry().setFromPoints([a,b]);
         const snapLine = new THREE.Line(snapGeometry, material);
-        const group = new THREE.Group();
-        const circle = drawCircle(lastVertex, 0xb8a5a3, true);
-        group.add(circle);
-        group.add(snapLine);
-        group.visible = false;
-        scene.add(group);
+        snapLine.visible = false;
+        // group.add(circle,snapLine);
+        // group.visible = true;
+        snapLine.userData = {ass_circle: circle};
+          
+        scene.add(snapLine);
         if(el.y==0){
-            h_snapLine.push(group);
+            h_snapLine.push([snapLine,circle]);
+            //h_snapGroup.push(group)
         } else { 
-            v_snapLine.push(group);
+            v_snapLine.push([snapLine,circle]);
+            //v_snapGroup.push(group)
         }
     }
 }
 
+
 function closePolygon(){
     // close polygon
-    console.log("close polygon");
     vertices.push(vertices[0]);
-    crvPoints.add(...vertices[0].toArray());
+    crvPoints[crvPoints.length-1].add(...vertices[0].toArray());
     updateSolidLine(vertices);
     const curveMaterial = new THREE.LineBasicMaterial({ color: 'green' });
     const curveGeometry = solidGeometry.clone();
@@ -334,13 +342,13 @@ Description: renders a snapGroup, consisting of a snapLine and a vertex-marking 
 with one exception if the the vertex in question is the first vertex (here polygon-closing logic takes priority) 
 */
 function drawPreview(snapGroup, lastVertex){
-    previewGroup = snapGroup;
-    const ortho_vertex = previewGroup.children[0].position;
-
+    previewGroup = [snapGroup,snapGroup.userData.ass_circle];
+    const ortho_vertex = previewGroup[1].position;
     if(ortho_vertex.x.toFixed(5)==lastVertex.x.toFixed(5)||ortho_vertex.y.toFixed(5)==lastVertex.y.toFixed(5)){
         return null;
     } else {
-        previewGroup.visible = true;
+        previewGroup[0].visible = true;
+        previewGroup[1].visible = true;
         return ortho_vertex;
     }
 }
@@ -371,14 +379,16 @@ function updateDottedGeometry(lastVertex, nextVertex){
    
 async function compute() {
     showSpinner(true);
-    
-    const nCrv = new rhino.NurbsCurve.create(false, 1, crvPoints)
-    console.log("nCrv: ",nCrv)
-    //const nCrv = new rhino.Polyline(crvPoints)
-    const crvData = JSON.stringify(nCrv.encode())
+    let nCrv = [];
+
+    for (const points of crvPoints){
+        nCrv.push(new rhino.NurbsCurve.create(false, 1, points).encode());
+    }
+
+    let crvData = nCrv.map((e) => JSON.stringify(e))
 
     const param1 = new RhinoCompute.Grasshopper.DataTree('three_curve')
-    param1.append([0], [crvData])
+    param1.append([0], crvData)
 
     // clear values
     let trees = []
@@ -433,14 +443,27 @@ function collectResults(responseJson) {
     const loader = new Rhino3dmLoader()
     loader.setLibraryPath('https://cdn.jsdelivr.net/npm/rhino3dm@0.15.0-beta/')
 
-    const resMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, wireframe: true, color: 'white' })
+    const resMaterial = new THREE.MeshBasicMaterial({ 
+        vertexColors: false, 
+        wireframe: false, 
+        color: "pink", 
+        transparent: true, 
+        opacity: .2
+    })
+    const resLineMaterial = new THREE.LineBasicMaterial({color: "blue"})
     // load rhino doc into three.js scene
     const buffer = new Uint8Array(doc.toByteArray()).buffer
     loader.parse(buffer, function (object) {
 
         // add material to resulting meshes
         object.traverse(child => {
-            child.material = resMaterial
+            console.log("child: ",child.type);
+            if(child instanceof THREE.Mesh){
+                console.log("it's a baby boy!")
+                child.material = resMaterial
+            } else {
+                child.material = resLineMaterial
+            }
         })
 
         // add object graph from rhino model to three.js scene
@@ -500,7 +523,6 @@ function init() {
     THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1)
 
     scene = new THREE.Scene()
-    //scene.background = new THREE.Color(1, 1, 1)
     camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000)
 
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
@@ -515,10 +537,13 @@ function init() {
 
     camera.position.set(0, 0, 100);
     camera.lookAt(0, 0, 0);
+    const light = new THREE.DirectionalLight(0xffffff, 1)
+    light.position.set(0,1,0)
+    scene.add( light )
 
     // add some controls to orbit the camera
     const controls = new OrbitControls(camera, renderer.domElement)
-
+    controls.enableRotate = false; 
     window.addEventListener('resize', onWindowResize, false)
 
     animate()
