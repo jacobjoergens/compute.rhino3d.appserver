@@ -111,24 +111,30 @@ function commonSolve (req, res, next){
   // what is the proper max-age, 31536000 = 1 year, 86400 = 1 day
   res.setHeader('Cache-Control', 'public, max-age=31536000')
   res.setHeader('Content-Type', 'application/json')
-
+  console.log("locals: ",res.locals.params.inputs);
   if(res.locals.cacheResult !== null) {
     //send
-    //console.log(res.locals.cacheResult)
+    console.log(res.locals.cacheResult)
     const timespanPost = Math.round(performance.now() - timePostStart)
     res.setHeader('Server-Timing', `cacheHit;dur=${timespanPost}`)
     res.send(res.locals.cacheResult)
     return
   } else {
     //solve
-    //console.log('solving')
+    console.log('solving')
     // set parameters
     let trees = []
-    console.log(res.locals.params.inputs);
     if(res.locals.params.inputs !== undefined) { //TODO: handle no inputs
       for (let [key, value] of Object.entries(res.locals.params.inputs)) {
         let param = new compute.Grasshopper.DataTree(key)
+        console.log(value)
         param.append([0], Array.isArray(value) ? value : [value])
+        // if (Array.isArray(value)) {
+        //   let m = value.map((e) => JSON.stringify(e))
+        //   param.append([0], m)
+        // } else {
+        //   param.append([0], [JSON.stringify(value)])
+        // }
         trees.push(param)
       }
     }
@@ -139,15 +145,15 @@ function commonSolve (req, res, next){
         trees.push(param)
       }
     }
-    console.log(trees);
+    console.log("Trees data: ", trees, trees[0]['data'].InnerTree[0]);
     let fullUrl = req.protocol + '://' + req.get('host')
     let definitionPath = `${fullUrl}/definition/${definition.id}`
     const timePreComputeServerCall = performance.now()
     let computeServerTiming = null
-
+    console.log('path: ',definitionPath)
     // call compute server
     compute.Grasshopper.evaluateDefinition(definitionPath, trees, false).then( (response) => {
-        
+      //console.log('res: ',response.text())  
       // Throw error if response not ok
       if(!response.ok) {
         throw new Error(response.statusText)

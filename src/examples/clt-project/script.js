@@ -20,7 +20,7 @@ rhino3dm().then(async m => {
     RhinoCompute.url = "http://localhost:8081/" // RhinoCompute server url. Use http://localhost:8081 if debugging locally.
     RhinoCompute.apiKey = getAuth('RHINO_COMPUTE_KEY')  // RhinoCompute server api key. Leave blank if debugging locally.
 
-    // source a .gh / .ghx file in the same directory
+    //source a .gh / .ghx file in the same directory
     let url = definitionName
     let res = await fetch(url)
     let buffer = await res.arrayBuffer()
@@ -75,6 +75,17 @@ function stage() {
     renderer.domElement.addEventListener('mousemove', onMouseMove);
     renderer.domElement.addEventListener('mouseup',onMouseUp)
     computeButton.onclick = compute
+    // computeButton.addEventListener('click', () => {
+    //     fetch('/python', {
+    //       method: 'POST'
+    //     })
+    //     .then(response => {
+    //       console.log('Python script executed successfully!');
+    //     })
+    //     .catch(error => {
+    //       console.error('Error running Python script:', error);
+    //     });
+    //   });
 }
 
 function onMouseDown(event){
@@ -329,14 +340,6 @@ function closePolygon(){
 }
 
 
-// function onMouseDown(event) {
-//     console.log("mousedown");
-//     let [x, y] = getXY(event);
-//     crvPoints.add(x, y, 0,);
-//     console.log(crvPoints);
-//     computeButton.disabled = false
-// }
-
 /*
 Description: renders a snapGroup, consisting of a snapLine and a vertex-marking circle, visible
 with one exception if the the vertex in question is the first vertex (here polygon-closing logic takes priority) 
@@ -378,6 +381,7 @@ function updateDottedGeometry(lastVertex, nextVertex){
 }
    
 async function compute() {
+    console.log("compute")
     showSpinner(true);
     let nCrv = [];
 
@@ -387,20 +391,47 @@ async function compute() {
 
     let crvData = nCrv.map((e) => JSON.stringify(e))
 
-    const param1 = new RhinoCompute.Grasshopper.DataTree('three_curve')
-    param1.append([0], crvData)
+    const data = {
+        definition: definitionName,
+        inputs: {
+          'threeCurve': crvData
+        }
+      }
 
-    // clear values
-    let trees = []
-    trees.push(param1)
+    const request = {
+        'method':'POST',
+        'body': JSON.stringify(data),
+        'headers': {'Content-Type': 'application/json'}
+      }
+    
+      try {
+        const response = await fetch('/solve', request)
+    
+        if(!response.ok)
+          throw new Error(response.statusText)
+    
+        const responseJson = await response.json()
+        collectResults(responseJson)
+    
+      } catch(error){
+        console.log("error")
+        console.error(error)
+      }
 
-    // Call RhinoCompute
+    // const param1 = new RhinoCompute.Grasshopper.DataTree('threeCurve')
+    // param1.append([0], crvData)
 
-    const res = await RhinoCompute.Grasshopper.evaluateDefinition(definition, trees)
+    // // clear values
+    // let trees = []
+    // trees.push(param1)
+    // console.log("scriptrees: ",trees)
+    // // Call RhinoCompute
 
-    console.log(res)
+    // const res = await RhinoCompute.Grasshopper.evaluateDefinition(definition, trees)
 
-    collectResults(res)
+    // console.log(res)
+
+    // collectResults(res)
 }
 
 /**
@@ -409,12 +440,13 @@ async function compute() {
 function collectResults(responseJson) {
 
     const values = responseJson.values
-
+    console.log("Response: ", responseJson)
+    
     // clear doc
     if (doc !== undefined)
         doc.delete()
 
-    //console.log(values)
+    
     doc = new rhino.File3dm()
 
     // for each output (RH_OUT:*)...
@@ -459,7 +491,6 @@ function collectResults(responseJson) {
         object.traverse(child => {
             console.log("child: ",child.type);
             if(child instanceof THREE.Mesh){
-                console.log("it's a baby boy!")
                 child.material = resMaterial
             } else {
                 child.material = resLineMaterial
@@ -467,7 +498,6 @@ function collectResults(responseJson) {
         })
 
         // add object graph from rhino model to three.js scene
-        console.log(object)
         scene.add(object)
 
         // hide spinner
@@ -491,6 +521,7 @@ function showSpinner(enable) {
 */
 function decodeItem(item) {
     const data = JSON.parse(item.data)
+    console.log('typeof: ',typeof data)
     if (item.type === 'System.String') {
         // hack for draco meshes
         try {

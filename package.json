@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "camelcase-keys": "^6.2.2",
+    "child-process": "^1.0.2",
     "compression": "1.7.4",
     "compute-rhino3d": "^0.13.0-beta",
     "cors": "2.8.5",
