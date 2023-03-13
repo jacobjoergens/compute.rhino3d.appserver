@@ -6,7 +6,7 @@ import rhino3dm from 'https://cdn.jsdelivr.net/npm/rhino3dm@0.15.0-beta/rhino3dm
 import { RhinoCompute } from 'https://cdn.jsdelivr.net/npm/compute-rhino3d@0.13.0-beta/compute.rhino3d.module.js'
 
 // reference the definition
-const definitionName = 'CLT-Project.gh'
+const definitionName = 'Digest-Curves.gh'
 
 // globals
 let rhino, definition, doc
@@ -21,10 +21,10 @@ rhino3dm().then(async m => {
     RhinoCompute.apiKey = getAuth('RHINO_COMPUTE_KEY')  // RhinoCompute server api key. Leave blank if debugging locally.
 
     //source a .gh / .ghx file in the same directory
-    let url = definitionName
-    let res = await fetch(url)
-    let buffer = await res.arrayBuffer()
-    definition = new Uint8Array(buffer)
+    // let url = definitionName
+    // let res = await fetch(url)
+    // let buffer = await res.arrayBuffer()
+    // definition = new Uint8Array(buffer)
 
     //initialize scene, camera, renderer
     init();
@@ -74,18 +74,8 @@ function stage() {
     renderer.domElement.addEventListener('click', onMouseDown);
     renderer.domElement.addEventListener('mousemove', onMouseMove);
     renderer.domElement.addEventListener('mouseup',onMouseUp)
-    computeButton.onclick = compute
-    // computeButton.addEventListener('click', () => {
-    //     fetch('/python', {
-    //       method: 'POST'
-    //     })
-    //     .then(response => {
-    //       console.log('Python script executed successfully!');
-    //     })
-    //     .catch(error => {
-    //       console.error('Error running Python script:', error);
-    //     });
-    //   });
+    //computeButton.onclick = compute
+    computeButton.addEventListener('click',runPython); 
 }
 
 function onMouseDown(event){
@@ -109,14 +99,14 @@ function onMouseDown(event){
         
         if (vertices.length == 1) {
             vertices[0] = new THREE.Vector3().fromBufferAttribute(positionAttribute, 0);
-            crvPoints.push(new rhino.Point3dList());
-            crvPoints[crvPoints.length-1].add(...vertices[0].toArray());
+            crvPoints.push([]);//new rhino.Point3dList());
+            crvPoints[crvPoints.length-1].push(vertices[0].toArray());
         }
         const endpoint = new THREE.Vector3().fromBufferAttribute(positionAttribute, 1);
 
         // add solid line to scene
         vertices.push(endpoint);
-        crvPoints[crvPoints.length-1].add(...endpoint.toArray())
+        crvPoints[crvPoints.length-1].push(endpoint.toArray())
         updateSolidLine();
     } else {
         // add first vertex
@@ -322,7 +312,7 @@ function setSnapLines(vertex, lastVertex, secondLast){
 function closePolygon(){
     // close polygon
     vertices.push(vertices[0]);
-    crvPoints[crvPoints.length-1].add(...vertices[0].toArray());
+    crvPoints[crvPoints.length-1].push(vertices[0].toArray())//.add(...vertices[0].toArray());
     updateSolidLine(vertices);
     const curveMaterial = new THREE.LineBasicMaterial({ color: 'green' });
     const curveGeometry = solidGeometry.clone();
@@ -379,7 +369,25 @@ function updateDottedGeometry(lastVertex, nextVertex){
     dottedLine.computeLineDistances();
     dottedLine.geometry.attributes.position.needsUpdate = true;
 }
-   
+
+async function runPython() {
+    let nCrv = [];
+    // for (const points of crvPoints){
+    //     //nCrv.push(rhino.Polyline.createFromPoints(points).encode())
+    //     const nurb = new rhino.NurbsCurve.create(false, 1, points)
+    //     nCrv.push(nurb.encode());
+    // }
+    //let crvData = nCrv.map((e) => e.toJSON({ verbose: true }))
+    //console.log(crvData)
+    const response = await fetch('/python', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(crvPoints),
+        })
+        .then(response => response.text())
+        .then(data => console.log("getting data: ",data))
+        .catch(error => console.error(error));
+}
 async function compute() {
     console.log("compute")
     showSpinner(true);
