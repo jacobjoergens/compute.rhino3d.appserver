@@ -153,7 +153,6 @@ function commonSolve (req, res, next){
     console.log('path: ',definitionPath)
     // call compute server
     compute.Grasshopper.evaluateDefinition(definitionPath, trees, false).then( (response) => {
-      //console.log('res: ',response.text())  
       // Throw error if response not ok
       if(!response.ok) {
         throw new Error(response.statusText)

@@ -1,6 +1,6 @@
 import rhino3dm as rh
 from itertools import chain
-from itertools import groupby
+from itertools import combinations
 import operator 
 from operator import itemgetter
 import networkx as nx
@@ -10,7 +10,7 @@ import compute_rhino3d.AreaMassProperties
 import json
 import numpy as np
 import matplotlib.pyplot as plt
-
+import enumMatchings
 
 
 compute_rhino3d.Util.url = "http://localhost:8081/"
@@ -76,7 +76,6 @@ class Corner:
             horizontal = leg_a
         self.vertical = vertical
         self.horizontal = horizontal
-        
 
 """
 Description: a doubly-linked list of Corner objects corresponding to the vertices of a single curve
@@ -149,6 +148,26 @@ class cornerList:
             self.length+=1
             self.concave_count+=1*current_corner.concave
             current_corner = current_corner.next
+    
+    """
+    Description: debugging helper function, traverses a given cornerList and outputs two arrays holding edges and vertices
+    Parameters: 
+        -corners (cornerList)
+    Output: 
+        -edges (list): array of line segments
+        -vertices (list): array of vertices
+    """
+    def iterLoop(self): 
+        current_corner = self.head
+        edges = []
+        vertices = []
+        
+        for i in range(self.length):
+            edges.append(current_corner.next_edge)
+            vertices.append(current_corner.vertex)
+            current_corner = current_corner.next
+        return edges, vertices
+    
 
 class Intersection:
     def __init__(self,point,l1,l2):
@@ -232,7 +251,6 @@ def digestCurves(curve_data):
     if(len(curves)>1):
         max_area_index = argmax(areas)
         if(max_area_index!=0):
-            print('rearrange')
             curves.insert(0,curves.pop(max_area_index))
             input_vertices.insert(0,input_vertices.pop(max_area_index))
             input_edges.insert(0,input_edges.pop(max_area_index))
@@ -245,19 +263,18 @@ def digestCurves(curve_data):
         
         #the bottom leftmost vertex must be convex 
         leftmost, extent = calculateExtents(vertices)
-        print(i,leftmost)
         if(i==0): 
             corner_lists[0].exterior = True #set the curve with greatest area to be an exterior curve
             max_extent = extent #set max_extent from prevailing dimension of the largest curve
 
         #calculate the direction at the bottom leftmost vertex from the input curve 
         rhrule = crossProduct(edges[(leftmost-1)%len(vertices)],edges[leftmost%len(vertices)],True)[2]
+        
         #set direction conventions 
-        if((corner_lists[-1].exterior==True and rhrule==-1) or (corner_lists[-1].exterior==False and rhrule==1)):
+        if((corner_lists[i].exterior==True and rhrule==-1) or (corner_lists[i].exterior==False and rhrule==1)):
             flow = -1
         else: 
             flow = 1
-
 
         for j in range(len(vertices)): #loop through vertices in input curve (backwards if flow is -1) 
             V = vertices[(leftmost+j*flow)%len(vertices)] 
@@ -283,7 +300,6 @@ def digestCurves(curve_data):
 
             #add new corner to cornerList
             corner_lists[i].make(new_corner)
-    print('concave_counts:',corner_lists[0].concave_count,corner_lists[1].concave_count)        
     return corner_lists, max_extent
 
 """
@@ -294,7 +310,6 @@ Output: concave_corners (list of Corners)
 def findConcaveVertices(corner_lists):
     concave_corners = []
     i = 0
-    print(len(corner_lists))
     for list in corner_lists:
         current_corner = list.head
         if(current_corner.concave):
@@ -345,20 +360,28 @@ def findColinearVertices(concave_corners, dir):
 
 def findIntersections(horizontal_chords,vertical_chords):
     intersections = []
+    h_remove = set()
+    v_remove = set()
     for i in range(len(horizontal_chords)):
         iter_pts = [horizontal_chords[i].From,horizontal_chords[i].To]
         iter_pts.sort(key=lambda coor:coor.X)
-        # print('iter_pts:',point(iter_pts[0]),point(iter_pts[1]))
         for j in range(len(vertical_chords)):
             compare_pts = [vertical_chords[j].From,vertical_chords[j].To]
             compare_pts.sort(key=lambda coor:coor.Y)
-            # print('compare_pts:',point(compare_pts[0]),point(compare_pts[1]))
             if(round(iter_pts[0].X,6)<=round(compare_pts[0].X,6)<=round(iter_pts[1].X,6)): 
                 if(round(compare_pts[0].Y,6)<=round(iter_pts[0].Y,6)<=round(compare_pts[1].Y,6)):
                     pt = rh.Point3d(compare_pts[0].X,iter_pts[0].Y,0)
                     intersect = [horizontal_chords[i], vertical_chords[j], {"point":pt}]
+                    h_remove.add(horizontal_chords[i])
+                    v_remove.add(vertical_chords[j])
                     intersections.append(intersect)
-                    print(i,"matches at ",j,"th vertical")
+                    # print(i,"matches at ",j,"th vertical")
+    
+    for chord in list(h_remove):
+        horizontal_chords.remove(chord)
+    for chord in list(v_remove):
+        vertical_chords.remove(chord)
+
     return intersections
 
 """
@@ -537,25 +560,6 @@ def doPartition(ext_corner, chord, intersection_corner, intersection_list, corne
     return corner_lists, chord
 
 """
-Description: debugging helper function, traverses a given cornerList and outputs two arrays holding edges and vertices
-Parameters: 
-    -corners (cornerList)
-Output: 
-    -edges (list): array of line segments
-    -vertices (list): array of vertices
-"""
-def iterLoop(corners): 
-    current_corner = corners.head
-    edges = []
-    vertices = []
-    
-    for i in range(corners.length):
-        edges.append(current_corner.next_edge)
-        vertices.append(current_corner.vertex)
-        current_corner = current_corner.next
-    return edges, vertices
-
-"""
 Description: recursive function to follow non-degenerate partitioning algorithm
 Parameters: 
     -dir (number): denotes which curve to extend in extendCurve
@@ -587,31 +591,153 @@ def nonDegenerateDecomposition(dir,corner_lists,regions,pattern):
 #        edges, vertex = iterLoop(corner_lists[0])
 #        return edges, vertex
 
-def degenerateDecomposition(horizontal, vertical, intersections):
-    print(intersections)
-    G = nx.Graph()
-    G.add_nodes_from(horizontal,bipartite=0)
-    G.add_nodes_from(vertical,bipartite=1)
-    G.add_edges_from(intersections)
+def getDegCorners(corner_lists,deg_chord,dir):
+    a_corner = None
+    b_corner = None
+    from_rounded = [round(coor,6) for coor in point(deg_chord.From)]
+    to_rounded = [round(coor,6) for coor in point(deg_chord.To)]
+    for i in range(len(corner_lists)):
+        current_corner = corner_lists[i].head
+        for j in range(corner_lists[i].length):
+            current_rounded = [round(coor,6) for coor in current_corner.vertex]
+            if(current_rounded==from_rounded or current_rounded==to_rounded):
+                if(a_corner==None):
+                    a_corner = current_corner
+                    a_index= i
+                else:
+                    b_corner = current_corner
+                    b_index = i
+                    if(b_index==a_index):
+                        if(dir==0):
+                            return a_corner, b_corner, a_index, b_index
+                        else: 
+                            return b_corner, a_corner, b_index, a_index
+                    else: 
+                        return a_corner, b_corner, a_index, b_index
+            current_corner = current_corner.next
+    return a_corner, b_corner, a_index, b_index
 
-    matching = nx.algorithms.bipartite.maximum_matching(G)
+def stageDegDecompGeometry(corner, horver, dir):
+    par = getattr(corner, horver[dir])
+    if(corner.next_edge==par):
+        forward = "next"
+        backward = "prev"
+    else: 
+        forward = "prev"
+        backward = "next"
+    print(forward,backward)
+    return forward, backward
 
-    # Iterate over all possible maximal independent sets
-    # maximal_independent_sets = []
-    # for edge in matching:
-    #     # Remove the edge from the matching
-    #     G.remove_edge(edge)
-    #     # Check if the resulting graph is still bipartite
-    #     if nx.algorithms.bipartite.is_bipartite(G):
-    #         # If so, add the vertices on both sides of the removed edge to the independent set
-    #         left, right = edge
-    #         independent_set = set(matching[left]) | set(matching[right]) | {left, right}
-    #         maximal_independent_sets.append(independent_set)
-    #     # Add the edge back to the graph
-    #     G.add_edge(edge)
+def degenerateDecomposition(horizontal, vertical, intersections, corner_lists):
+    independent_sets = set()
+    if(len(intersections)>0):
+        G = nx.Graph()
+        for ii in intersections:
+            G.add_node(ii[0],bipartite=0)
+            G.add_node(ii[1],bipartite=1)
+        G.add_edges_from(intersections)
+
+        top, bottom =  nx.bipartite.sets(G)
+        combined_elements = list(top)+list(bottom)
+        combos = list(combinations(combined_elements, len(top)))
+        independent_sets.add(combos.pop(0))
+        independent_sets.add(combos.pop(-1))
+        for combo in combos: 
+            if not any(G.has_edge(u,v) for u,v in combinations(combo, 2)):
+                independent_sets.add(combo)
+        max_set = horizontal+vertical+list(list(independent_sets)[-1])  
+    else: 
+        max_set = horizontal+vertical    
+    """ 
+    For now just take the last item
+    will handle the different decomp options later
+    """
+    horver = ["horizontal","vertical"]
+    for i in range(len(corner_lists)):
+            print(i, corner_lists[i].length)
+    # edg, vert = corner_lists[1].iterLoop()
+    # print(vert)        
+    for deg_chord in max_set:
+        # get dot product
+        chord_vector = lineToVector(deg_chord)
+        deg_dot = np.dot(chord_vector,[0,1,0])
+        # normalize dot product
+        dir = int(abs(deg_dot / (np.linalg.norm(chord_vector))))
+        #by construction, a_index<b_index or if equal a_corner precedes b_corner
+        a_corner, b_corner, a_index, b_index = getDegCorners(corner_lists, deg_chord, dir)
+        a_list = corner_lists[a_index]
+        a_forward, a_backward = stageDegDecompGeometry(a_corner, horver, dir)
+        b_forward, b_backward = stageDegDecompGeometry(b_corner, horver, dir)
+        
+        
+        a0 = getattr(a_corner, a_backward)
+        a1 = getattr(a_corner, a_forward)
+        a2 = getattr(a1, a_forward)
+        b0 = getattr(b_corner, b_backward)
+        b1 = getattr(b_corner, b_forward)
+        b2 = getattr(b1, b_forward)
+
+        # print('aindex:',a_index, 'bindex:',b_index)
+        if(dir==0):
+            print(a_corner.vertex, b_corner.vertex)
+        
+        perp_dot = np.dot(np.array(a0.vertex)-np.array(a_corner.vertex),np.array(b0.vertex)-np.array(b_corner.vertex))
+        if(perp_dot/np.linalg.norm(perp_dot)==1):
+            if(a_index==b_index):
+                print("q1", "dir:", dir)
+                a_line = [a2, a1, b1]
+                b_line = [b0, b_corner, a_corner]
+            else: 
+                print("q4", "dir:", dir)
+                a_line = [a0, a_corner, b_corner]
+                b_line = [b2, b1, a1]
+                
+        else: 
+            if(a_index==b_index):
+                secondary_dot = np.dot(np.array(a2.vertex)-np.array(a1.vertex),np.array(b2.vertex)-np.array(b1.vertex))
+                print(secondary_dot)
+                if(secondary_dot/np.linalg.norm(secondary_dot)==1):
+                    print('q2.2')
+                    a_line = [a0,a_corner,b1]
+                    b_line = [b0,b_corner,a1]
+                else: 
+                    print('q2.1')
+                    a_line = [a2, a1, b_corner]
+                    b_line = [b2, b1, a_corner]
+            else: 
+                print("q3", "dir:", dir)
+                a_line = [a0, a_corner, b1]
+                b_line = [b0, b_corner, a1]
+        # should be good till here at least 
+
+        a_seg = rh.Line(rh.Point3d(*a_line[1].vertex), rh.Point3d(*a_line[2].vertex))
+        b_seg = rh.Line(rh.Point3d(*b_line[1].vertex), rh.Point3d(*b_line[2].vertex))
+        a_line[1].next_edge = a_seg
+        b_line[1].next_edge = b_seg
+
+        a_list.stitch(a_line[0],a_line[1],a_line[2])
+        a_list.head = a_line[1]
+        a_list.tail = a_line[0]
+        
+        a_list.stitch(b_line[0], b_line[1], b_line[2])
+        a_corner.concave = False
+        b_corner.concave = False
+        a_list.updateState()
+        
+        if(b_index==a_index):
+            b_list = cornerList()
+            b_list.head = b_line[1]
+            b_list.tail = b_line[0]
+            b_list.updateState()
+            corner_lists.append(b_list)
+        else: 
+            corner_lists.pop(b_index)
+        # a_list.updateState()
+        for i in range(len(corner_lists)):
+            print(i, corner_lists[i].length)
+    # return corner_lists, G
 
     
-    return G
 """
 Main: 
 I. digestCurves
@@ -640,33 +766,32 @@ class CustomEncoder(json.JSONEncoder):
                     "l2":line(o.l2).tolist()}
         return super().default(o)
 
+def plotGraph(graph,ax,title):    
+    # pos=[(ii[0],ii[1]) for ii in graph.nodes()]
+    pos = nx.bipartite_layout(graph, horizontal)
+    # pos_dict=dict(zip(graph.nodes(),pos))
+    nx.draw(graph,pos=pos,ax=ax,with_labels=True)
+    ax.set_title(title)
+    return   
+
 if __name__ == "__main__":
     curve = sys.argv[1]
     # curve = json.dumps()
+    print("hello")
     corner_lists, max_extent = digestCurves(curve)
+    print("digested")
     concave_corners = findConcaveVertices(corner_lists)
-
-    colinear_pairs = {
-        'horizontal': findColinearVertices(concave_corners,1),
-        'vertical': findColinearVertices(concave_corners,0)
-        }
-
-    horizontal = colinear_pairs['horizontal']
-    vertical = colinear_pairs['vertical']
-
-    intersections = findIntersections(colinear_pairs['horizontal'],colinear_pairs['vertical'])
+    horizontal = findColinearVertices(concave_corners,1)
+    vertical = findColinearVertices(concave_corners,0)
+    
+    intersections = findIntersections(horizontal,vertical)
+    print(len(intersections))
+    degenerateDecomposition(horizontal,vertical,intersections,corner_lists)
     # serializedObj = json.dumps(intersections, cls=CustomEncoder)
     # print(json.dumps(degenerateDecomposition(horizontal,vertical,intersections).edges))
-
-    print(len(concave_corners))
-    print(len(horizontal))
-    print(len(vertical))
-    nx.draw(degenerateDecomposition(horizontal,vertical,intersections))
-    plt.show()
-    if(max_extent=='x'):
-        bias_dir=0
-    else: 
-        bias_dir=1
+    # for corner_list in corner_lists: 
+    #     print(corner_list.iterLoop())
+    
 
 
 
