@@ -379,15 +379,39 @@ async function runPython() {
     // }
     //let crvData = nCrv.map((e) => e.toJSON({ verbose: true }))
     //console.log(crvData)
+
+    let resData
     const response = await fetch('/python', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(crvPoints),
         })
         .then(response => response.text())
-        .then(data => console.log("getting data: ",data))
+        .then(data => {
+            //DEBUG console.log("getting data: ", data)
+            resData = JSON.parse(data)
+        })
         .catch(error => console.error(error));
+
+        
+        for(const points of resData){
+            const regionMaterial = new THREE.LineBasicMaterial({ color: 'pink' });
+            // create a new Float32Array with the point data
+            let vertices = new Float32Array(points.length * 3);
+            for (var i = 0; i < points.length; i++) {
+            vertices[i * 3] = points[i][0];
+            vertices[i * 3 + 1] = points[i][1];
+            vertices[i * 3 + 2] = points[i][2];
+            }
+
+// create a new BufferGeometry and set the vertices attribute
+            let regionGeo = new THREE.BufferGeometry();
+            regionGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            const regionLine = new THREE.Line(regionGeo, regionMaterial);
+            scene.add(regionLine)
+        }
 }
+
 async function compute() {
     console.log("compute")
     showSpinner(true);
@@ -425,21 +449,6 @@ async function compute() {
         console.log("error")
         console.error(error)
       }
-
-    // const param1 = new RhinoCompute.Grasshopper.DataTree('threeCurve')
-    // param1.append([0], crvData)
-
-    // // clear values
-    // let trees = []
-    // trees.push(param1)
-    // console.log("scriptrees: ",trees)
-    // // Call RhinoCompute
-
-    // const res = await RhinoCompute.Grasshopper.evaluateDefinition(definition, trees)
-
-    // console.log(res)
-
-    // collectResults(res)
 }
 
 /**
