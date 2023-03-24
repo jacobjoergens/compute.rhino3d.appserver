@@ -17,17 +17,12 @@ def getDegCorners(corner_lists,deg_chord,dir):
                 if(a_corner==None):
                     a_corner = current_corner
                     a_index= i
-                    mark = j
                 else:
                     b_corner = current_corner
                     b_index = i
                     if(b_index==a_index):
                         if(a_corner.vertex[opdir]!=a_corner.prev.vertex[opdir]):
                             return b_corner, a_corner, a_index, b_index
-                        # if(j-mark<corner_lists[i].length/2):
-                        #     return a_corner, b_corner, a_index, b_index
-                        # else: 
-                        #     return b_corner, a_corner, b_index, a_index
                     else: 
                         return a_corner, b_corner, a_index, b_index
             current_corner = current_corner.next
@@ -72,10 +67,6 @@ def decompose(horizontal, vertical, intersections, corner_lists):
         combined_elements = list(top)+list(bottom)
         combos = list(combinations(combined_elements, max(len(top),len(bottom))))
         for combo in combos: 
-            # print(combo)
-            # if(top.difference(combo)==top or bottom.difference(combo)==bottom):
-            #     print('culling')
-            #     continue
             if not any(G.has_edge(u,v) for u,v in combinations(combo, 2)):
                 independent_sets.add(combo)
         max_set = horizontal+vertical+list(list(independent_sets)[-1]) #taking last for now, change later when allowing different max covers
@@ -110,36 +101,21 @@ def decompose(horizontal, vertical, intersections, corner_lists):
         b1 = getattr(b_corner, b_forward)
         b2 = getattr(b1, b_forward)
         
-        # print(a_corner.vertex, a1.vertex, a0.vertex)
-        # print('__________')
-        # print(b_corner.vertex,b1.vertex,b0.vertex)
         perp_dot = np.dot(np.array(a0.vertex)-np.array(a_corner.vertex),np.array(b0.vertex)-np.array(b_corner.vertex))
         if(perp_dot/np.linalg.norm(perp_dot)==1):
-            if(a_index==b_index):
-                # print('q1')
-                a_line = [a2, a1, b1]
-                b_line = [b0, b_corner, a_corner]
-            else: 
-                # print('q4')
+            if(a1==a_corner.next):
                 a_line = [a0, a_corner, b_corner]
                 b_line = [b2, b1, a1]
-                
+            else:
+                a_line = [a2, a1, b1]
+                b_line = [b0, b_corner, a_corner]
         else: 
-            if(a_index==b_index):
-                # secondary_dot = np.dot(np.array(a2.vertex)-np.array(a1.vertex),np.array(b2.vertex)-np.array(b1.vertex))
-                # if(secondary_dot/abs(secondary_dot)==1):
-                if(a1==a_corner.next):
-                    # print('q2.1')
-                    a_line = [a0,a_corner,b1]
-                    b_line = [b0,b_corner,a1]
-                else: 
-                    # print('q2.2',dir)
-                    a_line = [a2, a1, b_corner]
-                    b_line = [b2, b1, a_corner]
+            if(a1==a_corner.next):
+                a_line = [a0,a_corner,b1]
+                b_line = [b0,b_corner,a1]
             else: 
-                # print('q3')
-                a_line = [a0, a_corner, b1]
-                b_line = [b0, b_corner, a1]
+                a_line = [a2, a1, b_corner]
+                b_line = [b2, b1, a_corner]
 
         a_seg = (a_line[1].vertex, a_line[2].vertex)
         b_seg = (b_line[1].vertex, b_line[2].vertex)
