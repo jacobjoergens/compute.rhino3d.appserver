@@ -40,7 +40,7 @@ function sendToPython(req,res){
     //const nCrvJSON = JSON.stringify(nCrv);
     //console.log('nCrvJSON: ',nCrvJSON)
     // Spawn the Python script and pass in the nCrv argument
-    const command = [`${path.join(__dirname, '../examples/clt-project/r3dm_translation.py')}`, `${JSON.stringify(req.body)}`];
+    const command = [`${path.join(__dirname, '../examples/clt-project/min-k-partition.py')}`, `${JSON.stringify(req.body)}`];
     const childProcess = spawn('python',command);
 
     let outputData = ''; // Initialize output data variable

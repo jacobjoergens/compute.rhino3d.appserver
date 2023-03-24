@@ -393,15 +393,16 @@ async function runPython() {
         })
         .catch(error => console.error(error));
 
-        
-        for(const points of resData){
+        console.log(resData.length)
+        for(let j=0; j<resData.length; j++){
+            let points = resData[j]
             const regionMaterial = new THREE.LineBasicMaterial({ color: 'pink' });
             // create a new Float32Array with the point data
             let vertices = new Float32Array(points.length * 3);
             for (var i = 0; i < points.length; i++) {
-            vertices[i * 3] = points[i][0];
-            vertices[i * 3 + 1] = points[i][1];
-            vertices[i * 3 + 2] = points[i][2];
+                vertices[i * 3] = points[i][0];
+                vertices[i * 3 + 1] = points[i][1];
+                vertices[i * 3 + 2] = points[i][2];
             }
 
 // create a new BufferGeometry and set the vertices attribute
