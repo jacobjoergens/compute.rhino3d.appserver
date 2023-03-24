@@ -384,18 +384,21 @@ async function runPython() {
     const response = await fetch('/python', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(crvPoints),
+        body: JSON.stringify({
+            crvPoints: crvPoints,
+            k: 4
+        })
         })
         .then(response => response.text())
         .then(data => {
-            //DEBUG console.log("getting data: ", data)
+            //DEBUG  console.log("getting data: ", data)
             resData = JSON.parse(data)
         })
         .catch(error => console.error(error));
-
-        console.log(resData.length)
-        for(let j=0; j<resData.length; j++){
-            let points = resData[j]
+        console.log(resData.k)
+        const regions = resData.regions
+        for(let j=0; j<regions.length; j++){
+            let points = regions[j]
             const regionMaterial = new THREE.LineBasicMaterial({ color: 'pink' });
             // create a new Float32Array with the point data
             let vertices = new Float32Array(points.length * 3);

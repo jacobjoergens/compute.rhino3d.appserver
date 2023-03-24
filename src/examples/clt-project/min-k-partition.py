@@ -5,7 +5,10 @@ import sys
 import json
 
 if __name__ == "__main__":
-    curve = sys.argv[1]
+    input_json = sys.argv[1]
+    input = json.loads(input_json)
+    curve = input['crvPoints']
+    k = input['k']
     # curve = json.dumps()
     corner_lists, max_extent = ingest.digestCurves(curve)
     concave_corners = ingest.findConcaveVertices(corner_lists)
@@ -20,7 +23,12 @@ if __name__ == "__main__":
     
     regions = []
     nondegenerateDecomposition.decompose(0, corner_lists, regions, 0)
-    print(json.dumps(regions))
+
+    data = {
+        'regions': regions,
+        'k': k
+    }
+    print(json.dumps(data))
     # serializedObj = json.dumps(intersections, cls=CustomEncoder)
     # print(json.dumps(degenerateDecomposition(horizontal,vertical,intersections).edges))
     # for corner_list in corner_lists: 

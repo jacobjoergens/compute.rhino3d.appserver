@@ -33,14 +33,8 @@ function runPythonScript(args) {
 
 
 function sendToPython(req,res){
-    //app.use(bodyParser.json());
-    let nCrv = Array.isArray(req.body)?req.body:[req.body]
     console.log(req.body)
-    // Convert the nCrv data to a JSON string
-    //const nCrvJSON = JSON.stringify(nCrv);
-    //console.log('nCrvJSON: ',nCrvJSON)
-    // Spawn the Python script and pass in the nCrv argument
-    const command = [`${path.join(__dirname, '../examples/clt-project/min-k-partition.py')}`, `${JSON.stringify(req.body)}`];
+    const command = [`${path.join(__dirname, '../examples/clt-project/min-k-partition.py')}`, req.body];
     const childProcess = spawn('python',command);
 
     let outputData = ''; // Initialize output data variable

@@ -193,14 +193,13 @@ def digestCurves(curve_data):
     input_vertices = []
     input_edges = []
     areas = np.array([])
-    json_dict = json.loads(curve_data)
-    for i in range(len(json_dict)):
-        points = rh.Point3dList(len(json_dict[i]))
+    for i in range(len(curve_data)):
+        points = rh.Point3dList(len(curve_data[i]))
         input_vertices.append([])
         input_edges.append([])# curves.append(rh.NurbsCurve.Create(False, 1, json_dict[points]))
-        for j in range(len(json_dict[i])):
-            points.Add(*json_dict[i][j])
-            input_vertices[i].append(tuple(json_dict[i][j]))
+        for j in range(len(curve_data[i])):
+            points.Add(*curve_data[i][j])
+            input_vertices[i].append(tuple(curve_data[i][j]))
             if(j>0):
                 input_edges[i].append((input_vertices[i][j-1],input_vertices[i][j]))
         curves.append(rh.NurbsCurve.Create(False,1,points))
