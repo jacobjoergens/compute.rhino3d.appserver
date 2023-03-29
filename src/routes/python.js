@@ -34,7 +34,7 @@ function runPythonScript(args) {
 
 function sendToPython(req,res){
     console.log(req.body)
-    const command = [`${path.join(__dirname, '../examples/clt-project/min-k-partition.py')}`, req.body];
+    const command = [`${path.join(__dirname, '../examples/clt-project/min-k-partition.py')}`, `${JSON.stringify(req.body)}`];
     const childProcess = spawn('python',command);
 
     let outputData = ''; // Initialize output data variable

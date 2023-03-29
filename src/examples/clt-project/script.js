@@ -391,7 +391,7 @@ async function runPython() {
         })
         .then(response => response.text())
         .then(data => {
-            //DEBUG  console.log("getting data: ", data)
+            //DEBUG   console.log("getting data: ", data)
             resData = JSON.parse(data)
         })
         .catch(error => console.error(error));

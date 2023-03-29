@@ -34,7 +34,7 @@ class Corner:
         self.next_edge = leg_b
         self.assignLegs(leg_a,leg_b)
         self.concave = False 
-    
+        self.index = None
     """
     Description: assigns a pair of edges horizontal/vertical labels, there will always be one of each
     Parameters: leg_a, leg_b (Rhino.Geometry.Line)
@@ -71,7 +71,7 @@ class cornerList:
     Description: appends a new Corner to the end of the doubly-linked list
     Parameters: new_corner (Corner)
     """    
-    def make(self, new_corner): 
+    def make(self, new_corner, index): 
         if(self.tail==None):  #if the list is empty set head and tail to new_corner
             self.head = new_corner
             self.tail = new_corner
@@ -84,6 +84,7 @@ class cornerList:
         self.length+=1 
         self.horizontal_edges.add(new_corner.horizontal)
         self.vertical_edges.add(new_corner.vertical)
+        new_corner.index = index
 
     """
     Description: insert a new Corner between any two extant corners
@@ -116,7 +117,7 @@ class cornerList:
     """
     Description: traverse list and recount/update list-level attributes
     """  
-    def updateState(self):
+    def updateState(self,index):
         start = self.head
         current_corner = start.next
         #reset list-level attributes
@@ -131,6 +132,7 @@ class cornerList:
             current_corner = current_corner.next
             self.horizontal_edges.add(current_corner.horizontal)
             self.vertical_edges.add(current_corner.vertical)
+            current_corner.index = index
     
     """
     Description: debugging helper function, traverses a given cornerList and outputs two arrays holding edges and vertices
@@ -264,7 +266,7 @@ def digestCurves(curve_data):
                 corner_lists[i].concave_count+=1
 
             #add new corner to cornerList
-            corner_lists[i].make(new_corner)
+            corner_lists[i].make(new_corner, i)
     return corner_lists, max_extent
 
 """
@@ -355,7 +357,7 @@ def findColinearVertices(corner_lists, concave_corners, dir):
             __, ext_length, __ = sortTransverseSegments(a_corner, corner_lists, dir, oper)
             
             if(ext_length and ext_length>=abs(pair_vect[dir])):
-                colinear_chords.append((a_corner.vertex,b_corner.vertex))
+                colinear_chords.append((a_corner,b_corner))
                 colinear_array.remove(a_corner)
                 colinear_array.remove(b_corner)
                 concave_corners.remove(a_corner)
@@ -374,10 +376,10 @@ def findIntersections(horizontal_chords,vertical_chords):
     h_remove = set()
     v_remove = set()
     for i in reversed(range(len(horizontal_chords))):
-        iter_pts = [horizontal_chords[i][0],horizontal_chords[i][1]]
+        iter_pts = [horizontal_chords[i][0].vertex,horizontal_chords[i][1].vertex]
         iter_pts.sort(key=lambda coor:coor[0])
         for j in reversed(range(len(vertical_chords))):
-            compare_pts = [vertical_chords[j][0],vertical_chords[j][1]]
+            compare_pts = [vertical_chords[j][0].vertex,vertical_chords[j][1].vertex]
             compare_pts.sort(key=lambda coor:coor[1])
             if(round(iter_pts[0][0],6)<=round(compare_pts[0][0],6)<=round(iter_pts[1][0],6)): 
                 if(round(compare_pts[0][1],6)<=round(iter_pts[0][1],6)<=round(compare_pts[1][1],6)):

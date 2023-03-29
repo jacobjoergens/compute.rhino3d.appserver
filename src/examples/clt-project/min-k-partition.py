@@ -9,21 +9,18 @@ if __name__ == "__main__":
     input = json.loads(input_json)
     curve = input['crvPoints']
     k = input['k']
-    # curve = json.dumps()
     corner_lists, max_extent = ingest.digestCurves(curve)
     concave_corners = ingest.findConcaveVertices(corner_lists)
+    
     horizontal = ingest.findColinearVertices(corner_lists, concave_corners.copy(),0)
     vertical = ingest.findColinearVertices(corner_lists, concave_corners,1)
     intersections = ingest.findIntersections(horizontal,vertical)
-    # print(len(intersections))
-    # for i in range(len(corner_lists)):
-    #         print(i, corner_lists[i].length, corner_lists[i].concave_count)
+    # # for i in range(len(corner_lists)):
+    # #         print(i, corner_lists[i].length, corner_lists[i].concave_count)
     corner_lists, G = degenerateDecomposition.decompose(horizontal,vertical,intersections,corner_lists)
-
     
     regions = []
     nondegenerateDecomposition.decompose(0, corner_lists, regions, 0)
-
     data = {
         'regions': regions,
         'k': k
