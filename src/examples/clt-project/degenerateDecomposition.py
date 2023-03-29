@@ -73,22 +73,14 @@ def decompose(horizontal, vertical, intersections, corner_lists):
     else: 
         max_set = horizontal+vertical   
     
-    """ 
-    For now just take the last item
-    will handle the different decomp options later
-    """
     horver = ["horizontal","vertical"]
-    # print(len(max_set))
     for deg_chord in max_set:
-        # print(deg_chord)
-        # get dot 
         chord_vector = np.array(deg_chord[1])-np.array(deg_chord[0])
         deg_dot = np.dot(chord_vector,[0,1,0])
-        # normalize dot product
+        # convert normalized dot product to 0 or 1
         dir = int(abs(deg_dot / (np.linalg.norm(chord_vector))))
         #by construction, a_index<b_index or if equal a_corner precedes b_corner
         a_corner, b_corner, a_index, b_index = getDegCorners(corner_lists, deg_chord, dir)
-        # print(a_corner.vertex,b_corner.vertex)
         a_list = corner_lists[a_index]
         a_forward, a_backward = stageDegDecompGeometry(a_corner, horver, dir)
         b_forward, b_backward = stageDegDecompGeometry(b_corner, horver, dir)
@@ -122,6 +114,10 @@ def decompose(horizontal, vertical, intersections, corner_lists):
         a_line[1].next_edge = a_seg
         b_line[1].next_edge = b_seg
 
+        """
+        To add k>4 capability, need to somehow look ahead for 'magic' partitions and only allow those
+        """
+        
         a_list.stitch(a_line[0],a_line[1],a_line[2],False)
         a_list.head = a_line[1]
         a_list.tail = a_line[0]
