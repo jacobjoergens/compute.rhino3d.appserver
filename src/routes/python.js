@@ -3,62 +3,107 @@ const express = require('express')
 let router = express.Router()
 const bodyParser = require('body-parser');
 const path = require('path');
+const WebSocket = require('ws');
 
-function runPythonScript(args) {
-    return new Promise((resolve, reject) => {
-        const pythonProcess = spawn('python', [`${path.join(__dirname, '../examples/clt-project/r3dm_translation.py')}`, `${JSON.stringify(args)}`]);
-        let output = '';
-    
-        // capture the output of the Python process
-        pythonProcess.stdout.on('data', (data) => {
-          output += data.toString();
-        });
-    
-        // handle any errors that occur
-        pythonProcess.on('error', (err) => {
-          reject(err);
-        });
-    
-        // resolve the Promise with the output when the Python process exits
-        pythonProcess.on('exit', (code) => {
-          if (code !== 0) {
-            reject(new Error(`Python process exited with code ${code}`));
-          } else {
-            resolve(output);
-          }
-        });
+let ws
+
+function startPythonServer(res) {
+  // console.log(__dirname, path.join(__dirname, '../examples/clt-project/min-k-partition.py'));
+  const command = ['C:/Users/jacob/OneDrive/Documents/GitHub/compute.rhino3d.appserver/src/examples/clt-project/min-k-partition.py'] //[`${path.join(__dirname,'../examples/clt-project/min-k-partition.py')}`]
+  const pythonProcess = spawn('python', command);
+
+  pythonProcess.stdout.on('data', (data) => {
+    console.log(`Python stdout: ${data}`);
+  });
+
+  pythonProcess.stderr.on('data', (data) => {
+    console.error(`Python stderr: ${data}`);
+  });
+
+  pythonProcess.on('close', (code) => {
+    console.log(`child process exited with code ${code}`);
+  });
+
+  // Wait for the WebSocket server to start before connecting the client
+  const connectClient = () => {
+    console.log('Connecting client...');
+
+    ws = new WebSocket('ws://localhost:8765');
+
+    ws.on('open', () => {
+      res.send('Connection established!');
     });
+
+    ws.on('message', (message) => {
+      const data = JSON.parse(message);
+
+      switch (data.type) {
+        case 'stage':
+          handleStageMessage(ws.res, data.message);
+          break;
+        case 'get':
+          handleGetMessage(data.res, data);
+          break;
+        default:
+          console.log(data);
+      }
+    });
+  };
+  
+  const checkServer = setInterval(() => {
+    const ws = new WebSocket('ws://localhost:8765');
+
+    ws.on('open', () => {
+      console.log('Server is running!');
+      clearInterval(checkServer);
+      connectClient();
+    });
+
+    ws.on('error', () => {
+      console.log('Server is not running yet...');
+    });
+  }, 500);
 }
-    
 
-
-function sendToPython(req,res){
-    console.log(req.body)
-    const command = [`${path.join(__dirname, '../examples/clt-project/min-k-partition.py')}`, `${JSON.stringify(req.body)}`];
-    const childProcess = spawn('python',command);
-
-    let outputData = ''; // Initialize output data variable
-
-    childProcess.stdout.on('data', (data) => {
-        outputData += data; 
-    });
-    childProcess.stderr.on('data', (data) => {
-        console.error(`stderr: ${data}`);
-    });
-    childProcess.on('close', (code) => {
-        console.log(`Python process exited with code ${code}`);
-        res.send(outputData); // Send output data back to client
-      });
-
-
-    // Send a response to the client
-    //res.send('Received nCrv data');
+function sendStageMessage(res, data) {
+  const message = {
+    action: 'stage',
+    params: [data],
+  };
+  ws.send(JSON.stringify(message));
+  ws.res = res;
 }
 
+function handleStageMessage(endpointRes, message) {
+  endpointRes.send(message);
+}
 
+function sendGetMessage(res,index) {
+  const message = {
+    action: 'get',
+    params: [index]
+  };
+  ws.send(JSON.stringify(message));
+  ws.res = res;
+}
 
-router.post('/', function(req,res,next){
-    sendToPython(req,res);
+function handleGetMessage(data) {
+  const res = ws.res;
+  console.log('Server applied partition:', data.message);
+  res.send(data.body)
+}
+
+router.post('/startServer', function (req, res) {
+  startPythonServer(res);
 })
+
+router.post('/stagePartitioning', function (req, res){
+  sendStageMessage(res, req.body);
+})
+
+router.post('/getPartition', function (req, res){
+  sendGetMessage(res,req);
+})
+
 
 module.exports = router
