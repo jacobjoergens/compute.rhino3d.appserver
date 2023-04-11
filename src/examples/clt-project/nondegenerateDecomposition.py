@@ -31,7 +31,7 @@ def extendCurve(ext_corner,corner_lists,dir):
     else: 
         oper = operator.gt #right, above
     
-    intersection_corner, ext_length, intersection_list = sortTransverseSegments(ext_corner, corner_lists, horver, dir, oper)
+    intersection_corner, ext_length, intersection_list = sortTransverseSegments(ext_corner, corner_lists, dir, oper)
     end = tuple(ext_corner.vertex + vect/np.linalg.norm(vect)*ext_length)
     return (ext_corner.vertex,end), intersection_corner, intersection_list, horver
 
@@ -93,14 +93,14 @@ def doPartition(ext_corner, chord, intersection_corner, intersection_list, corne
     
     a_list.stitch(b_prev, b_corner, b_next, True)
     ext_corner.concave = False
-    a_list.updateState()
+    a_list.updateState(a_prev.list_index)
     
     b_list = None
     if(intersection_list==0):
         b_list = cornerList()
         b_list.head = b_corner
         b_list.tail = b_prev
-        b_list.updateState()
+        b_list.updateState(intersection_list)
         corner_lists.append(b_list)
     else: 
         corner_lists.pop(intersection_list)
@@ -116,18 +116,18 @@ Parameters:
     -pattern (number): used to alternate direction of extension 
 Output: None (appends to regions)
 """
-def decompose(dir,corner_lists,regions,pattern):
-    total_count = 0 
+def decompose(dir,corner_lists,regions,k):
     ext_corner = None
     for i in range(len(corner_lists)):
-        total_count+=corner_lists[i].concave_count
         if(corner_lists[i].concave_count>0 and ext_corner==None):
             current_corner = corner_lists[i].head
-            while(current_corner.concave==False): 
+            skipped = 0
+            while(current_corner.concave==False and skipped<k-4/2): 
                 current_corner = current_corner.next
+                skipped+=1
             corner_lists.insert(0,corner_lists.pop(i))
             ext_corner = current_corner
-    if(total_count==0):
+    if(not any(corner_list.length>k for corner_list in corner_lists)):
         for corner_list in corner_lists:
             edges, vertices = corner_list.iterLoop()
             vertices.append(vertices[0])
@@ -135,8 +135,6 @@ def decompose(dir,corner_lists,regions,pattern):
     else: 
         chord, intersection_corner, intersection_list, horver = extendCurve(current_corner,corner_lists,dir)
         corner_lists, vertex = doPartition(current_corner, chord, intersection_corner, intersection_list, corner_lists, dir)
-        if((pattern)%3==0):
-            dir = (dir+1)%2
-        decompose(dir,corner_lists,regions,pattern+1)
+        decompose(dir,corner_lists,regions,k)
 #        edges, vertex = iterLoop(corner_lists[0])
 #        return edges, vertex
