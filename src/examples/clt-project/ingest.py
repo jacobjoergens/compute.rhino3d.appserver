@@ -34,6 +34,7 @@ class Corner:
         self.next_edge = leg_b
         self.assignLegs(leg_a,leg_b)
         self.concave = False 
+        self.list_index = None
         self.index = None
     """
     Description: assigns a pair of edges horizontal/vertical labels, there will always be one of each
@@ -71,7 +72,7 @@ class cornerList:
     Description: appends a new Corner to the end of the doubly-linked list
     Parameters: new_corner (Corner)
     """    
-    def make(self, new_corner, index): 
+    def make(self, new_corner, list_index): 
         if(self.tail==None):  #if the list is empty set head and tail to new_corner
             self.head = new_corner
             self.tail = new_corner
@@ -81,10 +82,11 @@ class cornerList:
             self.tail = new_corner #update tail to new_corner
             self.tail.next = self.head #link new_corner to head
             self.head.prev = self.tail
+        new_corner.index = self.length
         self.length+=1 
         self.horizontal_edges.add(new_corner.horizontal)
         self.vertical_edges.add(new_corner.vertical)
-        new_corner.index = index
+        new_corner.list_index = list_index
 
     """
     Description: insert a new Corner between any two extant corners
@@ -117,8 +119,10 @@ class cornerList:
     """
     Description: traverse list and recount/update list-level attributes
     """  
-    def updateState(self,index):
+    def updateState(self,list_index):
         start = self.head
+        start.index = 0 
+        start.list_index = list_index
         current_corner = start.next
         #reset list-level attributes
         self.length = 1
@@ -127,12 +131,13 @@ class cornerList:
         self.vertical_edges = {start.vertical}
         #traverse and update
         while current_corner != start:
-            self.length+=1
             self.concave_count+=1*current_corner.concave
-            current_corner = current_corner.next
             self.horizontal_edges.add(current_corner.horizontal)
             self.vertical_edges.add(current_corner.vertical)
-            current_corner.index = index
+            current_corner.index = self.length
+            current_corner.list_index = list_index
+            self.length+=1
+            current_corner = current_corner.next
     
     """
     Description: debugging helper function, traverses a given cornerList and outputs two arrays holding edges and vertices
