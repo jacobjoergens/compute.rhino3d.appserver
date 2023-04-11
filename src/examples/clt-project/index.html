@@ -1,45 +1,148 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="icon" href="data:;base64,=">
-        <title>RhinoCompute: Curve Input Example</title>
-        <style>
-            body { 
-              margin: 0;
-              background-color: black;
-             }
-            canvas { width: 100%; height: 100%; }
-            input {width: 90%;}
-            #container {position: relative;}
-            #container canvas, #overlay { position: absolute;}
-            #overlay {z-index: 1; width: 100%}
 
-            #loader {
-                border: 5px solid #2d3a48; /* Light grey */
-                border-top: 5px solid #3d3d3d; /* Grey */
-                border-radius: 50%;
-                width: 40px;
-                height: 40px;
-                animation: spin 1s linear infinite;
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                z-index: 2;
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+    <link rel="icon" href="data:;base64,=">
+
+
+    <title>Minimum k partitioning on orthogonal polygons</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: black;
+        }
+
+        input {
+            width: 90%;
+        }
+
+
+        #container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #overlay {
+            z-index: 1;
+            width: 100%
+        }
+
+        #loader {
+            border: 5px solid #2d3a48;
+            /* Light grey */
+            border-top: 5px solid #3d3d3d;
+            /* Grey */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            z-index: 2;
+        }
+
+        #mainContainer {
+            max-height: 100vh; 
+            overflow: hidden;
+        }
+
+        #mainCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .carousel {
+            width: 30%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            right: 0;
+            display: none;
+        }
+
+        .carousel-inner {
+            width: 100%;
+            height: 100%;
+        }
+
+        .carousel-item>svg>div>foreignObject>img {
+            position: relative;
+            display: none;
+            height: 100%;
+            -webkit-box-align: center;
+            -ms-flex-align: center;
+            align-items: center;
+            width: 100%;
+        }
+
+        .carousel-item.active {
+            display: block;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
             }
 
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
+            100% {
+                transform: rotate(360deg);
             }
-        </style>
-    </head>
-    <body>
-        <div id="loader"></div> 
-        <div id="container">
-          <button id="computeButton" disabled>Call rhino.compute</button>
+        }
+    </style>
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.151.3/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.151.3/examples/jsm/"
+        }
+      }
+    </script>
+</head>
+
+<body>
+    <div id="loader"></div>
+    <div id="container">
+        <button id="computeButton" disabled>Apply Partition</button>
+    </div>
+    <div class="container-fluid" id="mainContainer">
+        <div class="row no-gutters">
+            <div class="col-12" id="canvas-container"> <!-- The canvas will take up all 12 columns initially -->
+                <!-- Add your canvas component here -->
+                <canvas id="mainCanvas"></canvas>
+            </div>
+            <div class="col-0" id="carousel-container"> <!-- The carousel will take up 4 columns -->
+                <!-- The carousel will be added here dynamically -->
+                <div id="carousel" class="carousel slide" data-interval=false data-wrap=true data-ride="carousel">
+                    <ol class="carousel-indicators">
+                        <!-- Indicators will be added dynamically -->
+                    </ol>
+                    <div class="carousel-inner">
+                        <!-- Images will be added dynamically -->
+                    </div>
+                    <a class="carousel-control-prev" role="button" data-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="sr-only">Previous</span>
+                    </a>
+                    <a class="carousel-control-next" role="button" data-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="sr-only">Next</span>
+                    </a>
+                </div>
+            </div>
         </div>
-        <script type="module" src="script.js"></script>
-    </body>
+    </div>
+    <script type="module" src="script.js"></script>
+</body>
+
 </html>
