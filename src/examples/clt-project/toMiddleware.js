@@ -1,6 +1,6 @@
 import { showSpinner } from "./initThree.js";
 import { crvPoints } from "./drawCurve.js";
-import { addFigures } from "./threeUI.js";
+import { addFigures, showPartition, partitionCache, activePartition } from "./threeUI.js";
 
 export async function spinUpSocket() {
     const response = await fetch('/python/startServer', {
@@ -35,26 +35,27 @@ export async function stagePartitioning() {
         .catch(error => console.error(error));
 
     addFigures(resData.bipartite_figures);
-
-    //         const regions = resData.regions
-    //         for(let j=0; j<regions.length; j++){
-    //             let points = regions[j]
-    //             const regionMaterial = new THREE.LineBasicMaterial({ color: 'pink' });
-    //             // create a new Float32Array with the point data
-    //             let vertices = new Float32Array(points.length * 3);
-    //             for (var i = 0; i < points.length; i++) {
-    //                 vertices[i * 3] = points[i][0];
-    //                 vertices[i * 3 + 1] = points[i][1];
-    //                 vertices[i * 3 + 2] = points[i][2];
-    //             }
-
-    // // create a new BufferGeometry and set the vertices attribute
-    //             let regionGeo = new THREE.BufferGeometry();
-    //             regionGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-    //             const regionLine = new THREE.Line(regionGeo, regionMaterial);
-    //             scene.add(regionLine)
-    //         }
+    console.log('staged!');
+    await showPartition(0);
 }
 
-
-
+export async function getPartition(partitionCache, degSetIndex, index){
+    let resData
+    const response = await fetch('/python/getPartition', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            index: index,
+            degSetIndex: degSetIndex
+        })
+    })
+        .then(response => response.text())
+        .then(data => {
+            //DEBUG 
+            resData = JSON.parse(data)
+            // console.log('resData: ',resData);
+            // console.log('index: ',index);
+            partitionCache[degSetIndex][index] = resData
+        })
+        .catch(error => console.error(error));
+}
