@@ -22,14 +22,6 @@
             width: 90%;
         }
 
-
-        #container {
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
         #overlay {
             z-index: 1;
             width: 100%
@@ -51,13 +43,36 @@
         }
 
         #mainContainer {
-            max-height: 100vh; 
+            max-height: 100vh;
             overflow: hidden;
         }
 
         #mainCanvas {
+            position: relative;
             width: 100%;
             height: 100%;
+            z-index: 1;
+        }
+
+        #part-nav { 
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translate(-50%, -100%);
+            z-index: 2;
+        }
+
+        .pagination>li>a {
+            background-color: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 16px; /* set the font size of the text */
+            font-weight: bold; /* set the font weight of the text */
+        }
+
+        .pagination>li>a:hover {
+            background-color: #ffffff;
+            color: #000000;
         }
 
         .carousel {
@@ -112,14 +127,35 @@
 
 <body>
     <div id="loader"></div>
-    <div id="container">
-        <button id="computeButton" disabled>Apply Partition</button>
-    </div>
     <div class="container-fluid" id="mainContainer">
         <div class="row no-gutters">
+            <button id="computeButton" disabled>Apply Partition</button>
+        </div>
+        <div class="row no-gutters">
             <div class="col-12" id="canvas-container"> <!-- The canvas will take up all 12 columns initially -->
-                <!-- Add your canvas component here -->
-                <canvas id="mainCanvas"></canvas>
+                <div class="row no-gutters">
+                    <canvas id="mainCanvas"></canvas>
+                    <!-- <button id="nextPartButton">next</button> -->
+                    <nav id="part-nav" aria-label="Page navigation">
+                        <ul class="pagination justify-content-center">
+                          <li class="page-item" id="prevButton">
+                            <a class="page-link" aria-label="Previous">
+                              <span aria-hidden="true">&laquo; Previous</span>
+                            </a>
+                          </li>
+                          <li class="page-item disabled">
+                            <a class="page-link" aria-disabled="true">
+                              <span aria-hidden="true">Partition 1 of 5 </span>
+                            </a>
+                          </li>
+                          <li class="page-item" id="nextButton">
+                            <a class="page-link" aria-label="Next">
+                              <span aria-hidden="true">Next &raquo;</span>
+                            </a>
+                          </li>
+                        </ul>
+                      </nav>
+                </div> 
             </div>
             <div class="col-0" id="carousel-container"> <!-- The carousel will take up 4 columns -->
                 <!-- The carousel will be added here dynamically -->
