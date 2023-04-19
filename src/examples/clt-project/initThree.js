@@ -24,7 +24,8 @@ export async function init() {
     const canvas = document.getElementById('mainCanvas')
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, canvas: canvas})
     renderer.setPixelRatio(window.devicePixelRatio)
-    renderer.setSize(window.innerWidth, window.innerHeight)
+    const mainContainer = document.getElementById('mainContainer')
+    renderer.setSize(mainContainer.offsetWidth,  mainContainer.offsetHeight)
     // document.body.appendChild(renderer.domElement)
 
     // const layer_meshes = new rhino.Layer()
