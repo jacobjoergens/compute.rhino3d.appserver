@@ -1,7 +1,15 @@
 import * as THREE from 'three'
 import { scene, camera, renderer, controls } from './initThree.js'
-import { stagePartitioning } from './toMiddleware.js'
+import { stagePartitioning, getPartition } from './toMiddleware.js'
 import { onMouseMove, onMouseDown, onMouseUp, curves } from './drawCurve.js';
+
+export let partitionCache = {}
+export let activePartition
+let currentIndex = 0
+
+let lengthDegSet = 0
+let degSetIndex = 0
+
 
 export function createListeners() {
     console.log("running");
@@ -11,10 +19,80 @@ export function createListeners() {
     renderer.domElement.addEventListener('mouseup', onMouseUp);
     // renderer.domElement.addEventListener('wheel', zoomToMouse);
     //computeButton.onclick = compute
-    computeButton.addEventListener('click', stagePartitioning);
+
+    document.getElementById('computeButton').addEventListener('click', async function () {
+        await stagePartitioning();
+        scene.add(activePartition);
+    });
+
+    document.getElementById('prevButton').addEventListener('click', function () {
+        showPartition(-1)
+    });
+    document.getElementById('nextButton').addEventListener('click', function () {
+        showPartition(1)
+    });
+}
+
+export async function showPartition(direction) {
+    if(activePartition){
+        scene.remove(activePartition)
+    }
+    if(degSetIndex in partitionCache){
+        console.log(degSetIndex, ' in partitionCache');
+        currentIndex = (currentIndex + direction) % partitionCache[degSetIndex][0]['numNonDegParts'].length;
+        if(!(currentIndex in partitionCache[degSetIndex])){
+            console.log(currentIndex, ' not yet in partitionCache[',degSetIndex,']');
+            // scene.remove(partitionCache[degSetIndex][currentIndex]['renderedRegions']); 
+            // currentIndex = newIndex;
+            await getPartition(partitionCache, degSetIndex, currentIndex);
+            drawPartition(currentIndex);
+        }
+    } else {
+        console.log(degSetIndex, ' not yet in partitionCache');
+        currentIndex = 0;
+        partitionCache[degSetIndex] = {};
+        await getPartition(partitionCache, degSetIndex, currentIndex);
+        drawPartition(currentIndex);
+    }
+    // console.log(partitionCache[degSetIndex][currentIndex]);
+    console.log('adding renderedRegions from ',currentIndex);
+    activePartition = partitionCache[degSetIndex][currentIndex]['renderedRegions'];
+    scene.add(activePartition);
+    // scene.add(partitionCache[degSetIndex][currentIndex]['renderedRegions'])
+}
+
+export function drawPartition(currentIndex) {
+    const currentPartition = partitionCache[degSetIndex][currentIndex];
+    const regions = currentPartition['regions'];
+
+    let renderedRegions = new THREE.Group()
+    for (let j = 0; j < regions.length; j++) {
+        let points = regions[j]
+        const regionMaterial = new THREE.LineBasicMaterial({ color: 'pink' });
+        // create a new Float32Array with the point data
+        let vertices = new Float32Array(points.length * 3);
+        for (var i = 0; i < points.length; i++) {
+            vertices[i * 3] = points[i][0];
+            vertices[i * 3 + 1] = points[i][1];
+            vertices[i * 3 + 2] = points[i][2];
+        }
+
+        // create a new BufferGeometry and set the vertices attribute
+        let regionGeo = new THREE.BufferGeometry();
+        regionGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+        const regionLine = new THREE.Line(regionGeo, regionMaterial);
+        renderedRegions.add(regionLine)
+    }
+    currentPartition['renderedRegions'] = renderedRegions;
+}
+
+function switchDegSet() {
+    currentIndex = 0;
+    showPartition(0);
 }
 
 export function addFigures(figures) {
+    lengthDegSet = figures.length;
     addCarouselHandlers();
     for (var i = 0; i < figures.length; i++) {
         // Create an image element with the base64-encoded image
@@ -37,7 +115,7 @@ export function addFigures(figures) {
     carousel_container.classList.remove('col-0');
     carousel_container.classList.add('col-md-4');
     let canvas = document.getElementById('mainCanvas');
-    canvas.height = canvas_container.offsetHeight; 
+    canvas.height = canvas_container.offsetHeight;
     canvas.width = canvas_container.offsetWidth;
     zoomToFit(canvas, controls);
 }
@@ -71,6 +149,8 @@ function addFigure(src, alt, active) {
 function addCarouselHandlers() {
     // Handle the click event for the previous arrow
     $(".carousel-control-prev").click(function (event) {
+        degSetIndex = (degSetIndex - 1) % lengthDegSet;
+        switchDegSet();
         event.preventDefault();
         var $activeItem = $(".carousel-item.active");
         var $prevItem = $activeItem.prev(".carousel-item");
@@ -91,6 +171,8 @@ function addCarouselHandlers() {
 
     // Handle the click event for the next arrow
     $(".carousel-control-next").click(function (event) {
+        degSetIndex = (degSetIndex + 1) % lengthDegSet;
+        switchDegSet();
         event.preventDefault();
         var $activeItem = $(".carousel-item.active");
         var $nextItem = $activeItem.next(".carousel-item");
@@ -113,7 +195,6 @@ function addCarouselHandlers() {
 function zoomToFit(canvas, controls) {
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
-    console.log(canvasWidth, canvasHeight);
 
     renderer.setSize(canvasWidth, canvasHeight);
 
@@ -127,11 +208,10 @@ function zoomToFit(canvas, controls) {
     const boundingBoxSize = box.getSize(new THREE.Vector3());
     const boundingBoxRadius = boundingBoxSize.length() / 2;
     const maxDim = Math.max(boundingBoxSize.x, boundingBoxSize.y, boundingBoxSize.z)
-    var distance = maxDim / 2 /  camera.aspect / Math.tan(Math.PI * camera.fov / 360);
+    var distance = maxDim / 2 / camera.aspect / Math.tan(Math.PI * camera.fov / 360);
     // move the camera to the appropriate distance
-    console.log('before: ',camera.position, box);
-    camera.position.set(center.x, center.y, center.z + distance);
-    console.log('after: ',camera.position);
+    camera.position.set(center.x, center.y, center.z + distance * 1.1);
     camera.lookAt(center);
 }
+
 
