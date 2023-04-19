@@ -158,6 +158,18 @@ class cornerList:
             current_corner = current_corner.next
         return edges, vertices
     
+    def copyList(self, conversionTable):
+        newList = cornerList()
+        current_corner = self.head
+        for i in range(self.length): 
+            new_corner = Corner(current_corner.prev_edge,current_corner.vertex,current_corner.next_edge)
+            new_corner.concave = current_corner.concave
+            newList.make(new_corner,current_corner.list_index)
+            conversionTable[current_corner] = new_corner
+            current_corner = current_corner.next
+        newList.concave_count = self.concave_count
+        return newList
+    
 
 class Intersection:
     def __init__(self,point,l1,l2):
