@@ -3,15 +3,16 @@ import numpy as np
 from itertools import combinations
 from ingest import cornerList
 import matplotlib.pyplot as plt
-import os
-import json
+import sys
 import base64
 import io
 
-def getDegCorners(corner_lists,deg_chord,dir):
+def getDegCorners(deg_chord,dir):
     opdir = (dir+1)%2
+
     a_corner = deg_chord[0]
     b_corner = deg_chord[1]
+    
     a_index = a_corner.list_index
     b_index = b_corner.list_index
     if(b_index==a_index):
@@ -147,11 +148,12 @@ def decompose(max_set, corner_lists):
         # convert normalized dot product to 0 or 1
         dir = int(abs(deg_dot / (np.linalg.norm(chord_vector))))
         #by construction, a_index<b_index or if equal a_corner precedes b_corner
-        a_corner, b_corner, a_index, b_index = getDegCorners(corner_lists, deg_chord, dir)
+        a_corner, b_corner, a_index, b_index = getDegCorners(deg_chord, dir)
+       
         a_list = corner_lists[a_index]
+        
         a_forward, a_backward = stageDegDecompGeometry(a_corner, horver, dir)
         b_forward, b_backward = stageDegDecompGeometry(b_corner, horver, dir)
-        
         
         a0 = getattr(a_corner, a_backward)
         a1 = getattr(a_corner, a_forward)
@@ -159,7 +161,7 @@ def decompose(max_set, corner_lists):
         b0 = getattr(b_corner, b_backward)
         b1 = getattr(b_corner, b_forward)
         b2 = getattr(b1, b_forward)
-        
+
         perp_dot = np.dot(np.array(a0.vertex)-np.array(a_corner.vertex),np.array(b0.vertex)-np.array(b_corner.vertex))
         if(perp_dot/np.linalg.norm(perp_dot)==1):
             if(a1==a_corner.next):
