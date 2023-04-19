@@ -39,10 +39,10 @@ function startPythonServer(res) {
 
       switch (data.type) {
         case 'stage':
-          handleStageMessage(ws.res, data.message);
+          handleMessage(ws.res, data.message);
           break;
         case 'get':
-          handleGetMessage(data.res, data);
+          handleMessage(ws.res, data.message);
           break;
         default:
           console.log(data);
@@ -74,23 +74,17 @@ function sendStageMessage(res, data) {
   ws.res = res;
 }
 
-function handleStageMessage(endpointRes, message) {
-  endpointRes.send(message);
-}
-
-function sendGetMessage(res,index) {
+function sendGetMessage(res,data) {
   const message = {
     action: 'get',
-    params: [index]
+    params: [data]
   };
   ws.send(JSON.stringify(message));
   ws.res = res;
 }
 
-function handleGetMessage(data) {
-  const res = ws.res;
-  console.log('Server applied partition:', data.message);
-  res.send(data.body)
+function handleMessage(endpointRes, message) {
+  endpointRes.send(message);
 }
 
 router.post('/startServer', function (req, res) {
@@ -102,7 +96,7 @@ router.post('/stagePartitioning', function (req, res){
 })
 
 router.post('/getPartition', function (req, res){
-  sendGetMessage(res,req);
+  sendGetMessage(res, req.body);
 })
 
 
