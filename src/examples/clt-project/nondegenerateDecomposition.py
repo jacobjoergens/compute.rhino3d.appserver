@@ -53,7 +53,7 @@ Parameters:
 Output: 
     -corner_lists: with updated list @ intersection_list and a new list (b_list) appended 
 """
-def doPartition(ext_corner, chord, intersection_corner, intersection_list, corner_lists, dir):
+def doPartition(ext_corner, chord, intersection_corner, intersection_list, corner_lists, dir, interior_edges):
     a_list = corner_lists[0] 
     intersection_vertex = chord[1]
     intersection_edge = intersection_corner.next_edge
@@ -67,9 +67,9 @@ def doPartition(ext_corner, chord, intersection_corner, intersection_list, corne
         a_seg = (chord[0],ext_corner.next.vertex)
     else: 
         a_seg = (chord[0],ext_corner.prev.vertex)
-
     ab_shard = ((chord[1],endpts[0]),(chord[1],endpts[1]))
     
+
     #assert affiliation between ab_shard[0] and a_corner
     if(ab_shard[0][1]!=intersection_corner.next.vertex):
         ab_shard = ab_shard[::-1]
@@ -80,6 +80,21 @@ def doPartition(ext_corner, chord, intersection_corner, intersection_list, corne
         b_corner = Corner(ab_shard[1], intersection_vertex, chord)
         b_prev = intersection_corner 
         b_next = ext_corner
+
+        for edge in interior_edges: 
+            if(edge==[ext_corner, a_prev] or edge==[a_prev, ext_corner]):
+                interior_edges.remove(edge)
+                break
+
+        interior_edges.append([a_prev,a_corner])
+        interior_edges.append([b_corner,b_next])
+        for edge in interior_edges:
+            if(edge==[intersection_corner,intersection_corner.next] or edge==[intersection_corner.next,intersection_corner]):
+                interior_edges.remove(edge)
+                interior_edges.append([a_corner,a_next])
+                interior_edges.append([b_prev, b_corner])
+                break
+
     elif(ray==ext_corner.next_edge):
         a_corner = Corner(ab_shard[1], intersection_vertex, a_seg)
         a_prev = intersection_corner 
@@ -87,7 +102,22 @@ def doPartition(ext_corner, chord, intersection_corner, intersection_list, corne
         b_corner = Corner(chord, intersection_vertex, ab_shard[0])
         b_prev = ext_corner
         b_next = intersection_corner.next
+
+        for edge in interior_edges: 
+            if(edge==[ext_corner, a_next] or edge==[a_next, ext_corner]):
+                interior_edges.remove(edge)
+                break
+
+        interior_edges.append([a_corner, a_next])
+        interior_edges.append([b_prev, b_corner])
         
+        for edge in interior_edges:
+            if(edge==[intersection_corner,intersection_corner.next] or edge==[intersection_corner.next,intersection_corner]):
+                interior_edges.remove(edge)
+                interior_edges.append([a_prev, a_corner])
+                interior_edges.append([b_corner, b_next])
+                break 
+
     a_list.stitch(a_prev, a_corner, a_next, True)
     a_list.head = a_corner
     a_list.tail = a_prev
@@ -105,7 +135,7 @@ def doPartition(ext_corner, chord, intersection_corner, intersection_list, corne
         corner_lists.append(b_list)
     else: 
         corner_lists.pop(intersection_list)
-    
+    sys.stdout.flush()
     return corner_lists
 
 """
@@ -117,7 +147,7 @@ Parameters:
     -pattern (number): used to alternate direction of extension 
 Output: None (appends to regions)
 """
-def decompose(dir_pattern, concave_corners, corner_lists, regions, k):
+def decompose(dir_pattern, concave_corners, corner_lists, regions, k, interior_edges):
     ext_corner = None
     for i in range(len(corner_lists)):
         if(corner_lists[i].concave_count>0 and ext_corner==None):
@@ -128,15 +158,18 @@ def decompose(dir_pattern, concave_corners, corner_lists, regions, k):
             ext_corner = current_corner
 
     if(not any(corner_list.length>k for corner_list in corner_lists)):
-        for corner_list in corner_lists:
+        for i in range(len(corner_lists)):
+            corner_list = corner_lists[i]
+            corner_list.updateState(i)
             edges, vertices = corner_list.iterLoop()
-            vertices.append(vertices[0])
+            # vertices.append(vertices[0])
             regions.append(vertices)
+        sys.stdout.flush()
     else: 
         dir = dir_pattern[concave_corners.index(ext_corner)]
         chord, intersection_corner, intersection_list = extendCurve(current_corner,corner_lists, dir)
-        corner_lists = doPartition(current_corner, chord, intersection_corner, intersection_list, corner_lists, dir)
-        decompose(dir_pattern, concave_corners, corner_lists, regions, k)
+        corner_lists = doPartition(current_corner, chord, intersection_corner, intersection_list, corner_lists, dir, interior_edges)
+        decompose(dir_pattern, concave_corners, corner_lists, regions, k, interior_edges)
     
 #        edges, vertex = iterLoop(corner_lists[0])
 #        return edges, vertex

@@ -33,9 +33,6 @@ def stageDegDecompGeometry(corner, horver, dir):
         backward = "next"
     return forward, backward
 
-def createBranches(independent_set):
-    return None 
-
 def getMaxIndependentSet(horizontal, vertical, intersections, corner_lists):
     k = 4
     max_sets = []
@@ -81,10 +78,6 @@ def getMaxIndependentSet(horizontal, vertical, intersections, corner_lists):
             max_sets.append(horizontal+vertical+list(independent_set))
     else: 
         max_sets = [horizontal+vertical] 
-
-    if k>4: 
-        for independent_set in max_sets:
-            createBranches(independent_set)
 
     return max_sets, G, top, bottom, h_counter, v_counter
 
@@ -140,7 +133,7 @@ def generateGraphs(max_sets, G, top, bottom, horizontal, vertical, h_counter, v_
         bipartite_figures.append(b64_bytes.decode('utf-8'))
     return bipartite_figures
 
-def decompose(max_set, corner_lists):
+def decompose(max_set, corner_lists, interior_edges):
     horver = ["horizontal","vertical"]
     for deg_chord in max_set:
         chord_vector = np.array(deg_chord[1].vertex)-np.array(deg_chord[0].vertex)
@@ -182,10 +175,9 @@ def decompose(max_set, corner_lists):
         b_seg = (b_line[1].vertex, b_line[2].vertex)
         a_line[1].next_edge = a_seg
         b_line[1].next_edge = b_seg
-
-        """
-        To add k>4 capability, need to somehow look ahead for 'magic' partitions and only allow those
-        """
+        
+        interior_edges.append([a_line[1],a_line[2]])
+        interior_edges.append([b_line[1],b_line[2]])
 
         a_list.stitch(a_line[0],a_line[1],a_line[2],False)
         a_list.head = a_line[0]
@@ -203,5 +195,4 @@ def decompose(max_set, corner_lists):
             corner_lists.append(b_list)
         else: 
             corner_lists.pop(b_index)
-
     return corner_lists

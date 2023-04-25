@@ -38,24 +38,17 @@ export async function showPartition(direction) {
         scene.remove(activePartition)
     }
     if(degSetIndex in partitionCache){
-        console.log(degSetIndex, ' in partitionCache');
         currentIndex = (currentIndex + direction) % partitionCache[degSetIndex][0]['numNonDegParts'].length;
         if(!(currentIndex in partitionCache[degSetIndex])){
-            console.log(currentIndex, ' not yet in partitionCache[',degSetIndex,']');
-            // scene.remove(partitionCache[degSetIndex][currentIndex]['renderedRegions']); 
-            // currentIndex = newIndex;
             await getPartition(partitionCache, degSetIndex, currentIndex);
             drawPartition(currentIndex);
         }
     } else {
-        console.log(degSetIndex, ' not yet in partitionCache');
         currentIndex = 0;
         partitionCache[degSetIndex] = {};
         await getPartition(partitionCache, degSetIndex, currentIndex);
         drawPartition(currentIndex);
     }
-    // console.log(partitionCache[degSetIndex][currentIndex]);
-    console.log('adding renderedRegions from ',currentIndex);
     activePartition = partitionCache[degSetIndex][currentIndex]['renderedRegions'];
     scene.add(activePartition);
     // scene.add(partitionCache[degSetIndex][currentIndex]['renderedRegions'])
@@ -64,11 +57,21 @@ export async function showPartition(direction) {
 export function drawPartition(currentIndex) {
     const currentPartition = partitionCache[degSetIndex][currentIndex];
     const regions = currentPartition['regions'];
+    const colors = currentPartition['colors'];
+    
+    const indices = new Uint16Array([
+        0,1,2, //triangle 1
+        0,2,3, //triangle 2
+    ])
 
+    const colorList = ['DarkRed','Firebrick','Crimson','IndianRed']
+    console.log(colors);
+    console.log(colorList);
     let renderedRegions = new THREE.Group()
     for (let j = 0; j < regions.length; j++) {
         let points = regions[j]
-        const regionMaterial = new THREE.LineBasicMaterial({ color: 'pink' });
+        console.log(j, colors[j],colorList[colors[j]]);
+        const regionMaterial = new THREE.MeshBasicMaterial({ color: colorList[colors[j]] });
         // create a new Float32Array with the point data
         let vertices = new Float32Array(points.length * 3);
         for (var i = 0; i < points.length; i++) {
@@ -77,10 +80,23 @@ export function drawPartition(currentIndex) {
             vertices[i * 3 + 2] = points[i][2];
         }
 
+        
         // create a new BufferGeometry and set the vertices attribute
         let regionGeo = new THREE.BufferGeometry();
         regionGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-        const regionLine = new THREE.Line(regionGeo, regionMaterial);
+        regionGeo.setIndex(new THREE.BufferAttribute(indices, 1));
+
+        const shape = new THREE.Shape();
+        shape.moveTo(vertices[0], vertices[1]);
+        for (var i = 1; i<points.length; i++) {
+            shape.lineTo(vertices[i*3],vertices[i*3+1])
+        }
+        shape.closePath();
+
+        // create a ShapeGeometry from the shape and buffer geometry
+        const shapeGeometry = new THREE.ShapeGeometry(shape, 1);
+        const regionLine = new THREE.Mesh(regionGeo, regionMaterial);
+        regionGeo.computeVertexNormals()
         renderedRegions.add(regionLine)
     }
     currentPartition['renderedRegions'] = renderedRegions;
