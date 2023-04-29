@@ -9,6 +9,9 @@ import websockets
 import itertools
 import copy
 import matplotlib.pyplot as plt
+import spaceDecomposition
+
+
 
 corner_lists = None
 k = 0
@@ -19,10 +22,13 @@ max_sets = []
 
 def stagePartitioning(input):
     global corner_lists, k, max_sets
-    curve = input['crvPoints']
+    curves = input['crvPoints']
     k = input['k']
+    areas = input['areas']
     
-    corner_lists, max_extent = ingest.digestCurves(curve)
+    xcomp, ycomp, minx, maxy, vertices = spaceDecomposition.digestCurves(curves)
+    spaceDecomposition.buildGrid(xcomp, ycomp, minx, maxy, vertices)
+    corner_lists, max_extent = ingest.digestCurves(curves)
     concave_corners = ingest.findConcaveVertices(corner_lists)
     
     horizontal = ingest.findColinearVertices(corner_lists, concave_corners.copy(),0)
